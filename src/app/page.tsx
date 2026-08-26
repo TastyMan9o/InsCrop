@@ -214,15 +214,7 @@ export default function Home() {
     () => ({ width: outputWidth, height: outputHeight }),
     [outputWidth, outputHeight],
   );
-  const imageJobKey = useMemo(
-    () =>
-      photos
-        .filter((item) => item.kind === "image")
-        .map((item) => item.id)
-        .join("|"),
-    [photos],
-  );
-  const imageItemsRef = useRef<MediaItem[]>([]);
+  const photosRef = useRef<MediaItem[]>([]);
   const setRatio = (nextRatio: RatioKey) => {
     setUseCustomSize(false);
     setRatioValue(nextRatio);
@@ -236,11 +228,13 @@ export default function Home() {
   }, [outputWidth, outputHeight]);
 
   useEffect(() => {
-    imageItemsRef.current = photos.filter((item) => item.kind === "image");
+    photosRef.current = photos;
   }, [photos]);
 
   useEffect(() => {
-    const imageItems = imageItemsRef.current;
+    const imageItems = photosRef.current.filter(
+      (item) => item.kind === "image",
+    );
     if (!imageItems.length) return;
     let cancelled = false;
     Promise.all(
@@ -271,7 +265,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [imageJobKey, dimensions, background, customBackground, blur, padding]);
+  }, [dimensions, background, customBackground, blur, padding]);
 
   function addFiles(fileList: FileList | File[]) {
     const incoming = Array.from(fileList).filter((f) =>
@@ -300,6 +294,33 @@ export default function Home() {
     });
     setPhotos((current) => [...current, ...added]);
     setSelectedId((current) => current ?? added[0]?.id ?? null);
+    const newImages = added.filter((item) => item.kind === "image");
+    if (newImages.length) {
+      void Promise.all(
+        newImages.map(async (item) => ({
+          id: item.id,
+          ...(await drawProcessed(
+            item,
+            dimensions,
+            background,
+            blur,
+            padding,
+            customBackground,
+          )),
+        })),
+      )
+        .then((rendered) => {
+          setPhotos((current) =>
+            current.map((item) => ({
+              ...item,
+              ...(rendered.find((result) => result.id === item.id) ?? {}),
+            })),
+          );
+        })
+        .catch((error: Error) =>
+          setNotice(`Processing failed: ${error.message}`),
+        );
+    }
   }
   function onInput(event: ChangeEvent<HTMLInputElement>) {
     if (event.target.files) addFiles(event.target.files);
