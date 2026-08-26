@@ -25,7 +25,8 @@ summary::-webkit-details-marker { display: none; }
 .preview-thumbnails { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
 .thumbnail { position: relative; aspect-ratio: 1 / 1; overflow: hidden; border: 2px solid transparent; border-radius: .7rem; background: #e8e5df; cursor: pointer; }
 .thumbnail.selected { border-color: #211f1b; }
-.thumbnail img { width: 100%; height: 100%; object-fit: cover; }
+.thumbnail img, .thumbnail video { width: 100%; height: 100%; object-fit: cover; }
+.thumbnail-kind { position: absolute; right: .32rem; bottom: .35rem; border-radius: 999px; background: rgba(0,0,0,.65); color: white; font-size: .57rem; font-weight: 700; padding: .16rem .3rem; }
 .thumbnail-number { position: absolute; left: .35rem; bottom: .35rem; display: grid; width: 1.25rem; height: 1.25rem; place-items: center; border-radius: 999px; background: rgba(0,0,0,.65); color: white; font-size: .68rem; font-weight: 700; }
 .thumbnail-remove { position: absolute; right: .35rem; top: .35rem; display: grid; width: 1.25rem; height: 1.25rem; place-items: center; border-radius: 999px; background: rgba(255,255,255,.92); color: #211f1b; font-size: 1rem; line-height: 1; }
 .custom-options { display: grid; gap: .7rem; border: 1px solid #e2ded7; border-radius: 1rem; background: #fbfaf8; padding: 1rem; }
