@@ -357,9 +357,11 @@ export default function Home() {
       });
       if (!video.videoWidth || !video.videoHeight)
         throw new Error("The video has no readable frames.");
-      if (video.duration > 90)
+      // Some phone videos report Infinity or a slightly inaccurate duration until playback begins.
+      // Only reject a clearly long, finite video; normal Instagram-length clips should not be blocked.
+      if (Number.isFinite(video.duration) && video.duration > 600)
         throw new Error(
-          "For fast local processing, videos must be 90 seconds or shorter.",
+          "For reliable local processing, videos must be 10 minutes or shorter.",
         );
       const canvas = document.createElement("canvas");
       canvas.width = dimensions.width;
@@ -609,7 +611,7 @@ export default function Home() {
                           <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
                             <p className="text-xs leading-5 text-stone-600">
                               Prepare this video locally with the selected
-                              no-crop canvas. Videos up to 90 seconds are
+                              no-crop canvas. Videos up to 10 minutes are
                               supported.
                             </p>
                             <button
@@ -970,7 +972,7 @@ export default function Home() {
                 ],
                 [
                   "Which video formats work?",
-                  "MP4, WebM and MOV can be added. Video export happens locally and is limited to 90 seconds for a fast browser experience. Chrome and Edge may export WebM when MP4 encoding is unavailable; convert it to MP4 before posting if Instagram requires it.",
+                  "MP4, WebM and MOV can be added. Video export happens locally and supports clips up to 10 minutes. Chrome and Edge may export WebM when MP4 encoding is unavailable; convert it to MP4 before posting if Instagram requires it.",
                 ],
               ].map(([q, a]) => (
                 <details key={q} className="group py-5">
