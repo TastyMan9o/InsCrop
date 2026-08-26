@@ -69,13 +69,18 @@ function getAverageColor(image: CanvasImageSource) {
 
 async function decodeImage(file: File): Promise<DecodedImage> {
   if ("createImageBitmap" in window) {
-    const bitmap = await createImageBitmap(file);
-    return {
-      source: bitmap,
-      width: bitmap.width,
-      height: bitmap.height,
-      close: () => bitmap.close(),
-    };
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Some browser/format combinations expose createImageBitmap but cannot decode with it.
+      // Fall through to the broadly compatible HTMLImageElement decoder.
+    }
   }
   const objectUrl = URL.createObjectURL(file);
   try {
@@ -85,7 +90,14 @@ async function decodeImage(file: File): Promise<DecodedImage> {
       element.onerror = () => reject(new Error(`Unable to read ${file.name}.`));
       element.src = objectUrl;
     });
-    return { source: image, width: image.width, height: image.height };
+    if (!image.naturalWidth || !image.naturalHeight) {
+      throw new Error(`Unable to read ${file.name}.`);
+    }
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -202,6 +214,15 @@ export default function Home() {
     () => ({ width: outputWidth, height: outputHeight }),
     [outputWidth, outputHeight],
   );
+  const imageJobKey = useMemo(
+    () =>
+      photos
+        .filter((item) => item.kind === "image")
+        .map((item) => item.id)
+        .join("|"),
+    [photos],
+  );
+  const imageItemsRef = useRef<MediaItem[]>([]);
   const setRatio = (nextRatio: RatioKey) => {
     setUseCustomSize(false);
     setRatioValue(nextRatio);
@@ -215,61 +236,18 @@ export default function Home() {
   }, [outputWidth, outputHeight]);
 
   useEffect(() => {
-    if (!photos.length) return;
-    let active = true;
-    Promise.all(
-      photos
-        .filter((p) => p.kind === "image")
-        .map(async (p) => ({
-          ...p,
-          ...(await drawProcessed(
-            p,
-            dimensions,
-            background,
-            blur,
-            padding,
-            customBackground,
-          )),
-        })),
-    )
-      .then((next) => {
-        if (active)
-          setPhotos((current) =>
-            current.map((item) => ({
-              ...item,
-              ...(next.find((rendered) => rendered.id === item.id) ?? {}),
-            })),
-          );
-      })
-      .catch((error: Error) =>
-        setNotice(`Processing failed: ${error.message}`),
-      );
-    return () => {
-      active = false;
-    };
-    // Image settings intentionally trigger a fresh local canvas render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    ratio,
-    useCustomSize,
-    customWidth,
-    customHeight,
-    background,
-    customBackground,
-    blur,
-    padding,
-  ]);
+    imageItemsRef.current = photos.filter((item) => item.kind === "image");
+  }, [photos]);
 
   useEffect(() => {
-    const pending = photos.filter(
-      (photo) => photo.kind === "image" && !photo.preview,
-    );
-    if (!pending.length) return;
+    const imageItems = imageItemsRef.current;
+    if (!imageItems.length) return;
+    let cancelled = false;
     Promise.all(
-      pending.map(async (photo) => ({
-        id: photo.id,
+      imageItems.map(async (item) => ({
+        id: item.id,
         ...(await drawProcessed(
-          photo,
+          item,
           dimensions,
           background,
           blur,
@@ -279,17 +257,21 @@ export default function Home() {
       })),
     )
       .then((rendered) => {
+        if (cancelled) return;
         setPhotos((current) =>
-          current.map((photo) => ({
-            ...photo,
-            ...rendered.find((item) => item.id === photo.id),
+          current.map((item) => ({
+            ...item,
+            ...(rendered.find((result) => result.id === item.id) ?? {}),
           })),
         );
       })
-      .catch((error: Error) =>
-        setNotice(`Processing failed: ${error.message}`),
-      );
-  }, [photos, dimensions, background, customBackground, blur, padding]);
+      .catch((error: Error) => {
+        if (!cancelled) setNotice(`Processing failed: ${error.message}`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageJobKey, dimensions, background, customBackground, blur, padding]);
 
   function addFiles(fileList: FileList | File[]) {
     const incoming = Array.from(fileList).filter((f) =>
