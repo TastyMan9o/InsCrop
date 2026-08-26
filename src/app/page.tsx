@@ -11,20 +11,21 @@ import {
 } from "react";
 import JSZip from "jszip";
 
-type RatioKey = "4:5" | "3:4" | "1:1";
+type RatioKey = "4:5" | "3:4" | "1:1" | "16:9" | "9:16" | "4:3" | "3:2";
 type Background = "blur" | "white" | "black" | "color" | "custom";
 type Dimensions = { width: number; height: number };
 type MediaKind = "image" | "video";
-type MediaItem = {
+type Photo = {
   id: string;
   name: string;
   file: File;
-  kind: MediaKind;
   preview?: string;
+  kind?: MediaKind;
   sourceUrl?: string;
   outputBlob?: Blob;
   dominant?: string;
 };
+type MediaItem = Photo;
 type DecodedImage = {
   source: CanvasImageSource;
   width: number;
@@ -39,11 +40,13 @@ const ratios: Record<
   "4:5": { width: 1080, height: 1350, label: "Portrait · 1080 × 1350" },
   "3:4": { width: 1080, height: 1440, label: "Tall · 1080 × 1440" },
   "1:1": { width: 1080, height: 1080, label: "Square · 1080 × 1080" },
+  "16:9": { width: 1080, height: 608, label: "Wide · 1080 × 608" },
+  "9:16": { width: 1080, height: 1920, label: "Story · 1080 × 1920" },
+  "4:3": { width: 1080, height: 810, label: "Classic · 1080 × 810" },
+  "3:2": { width: 1080, height: 720, label: "Photo · 1080 × 720" },
 };
 
-const ACCEPTED_IMAGES = ["image/jpeg", "image/png", "image/webp"];
-const ACCEPTED_VIDEOS = ["video/mp4", "video/webm", "video/quicktime"];
-const ACCEPTED = [...ACCEPTED_IMAGES, ...ACCEPTED_VIDEOS];
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 
 function getAverageColor(image: CanvasImageSource) {
   const canvas = document.createElement("canvas");
@@ -189,7 +192,7 @@ function download(url: string, name: string) {
 }
 
 export default function Home() {
-  const [photos, setPhotos] = useState<MediaItem[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [ratio, setRatioValue] = useState<RatioKey>("4:5");
   const [background, setBackground] = useState<Background>("blur");
   const [customBackground, setCustomBackground] = useState("#d9b9a6");
@@ -200,6 +203,8 @@ export default function Home() {
   const [padding, setPadding] = useState(4);
   const [isDragging, setIsDragging] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
+  // Kept only for backwards-compatible cleanup of previously generated client state.
+  // New uploads accept images only.
   const [processingVideoId, setProcessingVideoId] = useState<string | null>(
     null,
   );
@@ -214,7 +219,7 @@ export default function Home() {
     () => ({ width: outputWidth, height: outputHeight }),
     [outputWidth, outputHeight],
   );
-  const photosRef = useRef<MediaItem[]>([]);
+  const photosRef = useRef<Photo[]>([]);
   const setRatio = (nextRatio: RatioKey) => {
     setUseCustomSize(false);
     setRatioValue(nextRatio);
@@ -232,9 +237,7 @@ export default function Home() {
   }, [photos]);
 
   useEffect(() => {
-    const imageItems = photosRef.current.filter(
-      (item) => item.kind === "image",
-    );
+    const imageItems = photosRef.current;
     if (!imageItems.length) return;
     let cancelled = false;
     Promise.all(
@@ -273,7 +276,7 @@ export default function Home() {
     );
     const remaining = 20 - photos.length;
     if (!incoming.length) {
-      setNotice("Please choose JPG, PNG, WebP, MP4, WebM, or MOV files.");
+      setNotice("Please choose JPG, PNG, or WebP photos.");
       return;
     }
     if (incoming.length > remaining)
@@ -281,20 +284,15 @@ export default function Home() {
         `Only ${Math.max(remaining, 0)} more photos can be added (20 maximum).`,
       );
     const added = incoming.slice(0, remaining).map((file) => {
-      const kind: MediaKind = file.type.startsWith("video/")
-        ? "video"
-        : "image";
       return {
         id: crypto.randomUUID(),
         name: file.name,
         file,
-        kind,
-        sourceUrl: kind === "video" ? URL.createObjectURL(file) : undefined,
       };
     });
     setPhotos((current) => [...current, ...added]);
     setSelectedId((current) => current ?? added[0]?.id ?? null);
-    const newImages = added.filter((item) => item.kind === "image");
+    const newImages = added;
     if (newImages.length) {
       void Promise.all(
         newImages.map(async (item) => ({
@@ -334,8 +332,6 @@ export default function Home() {
   function remove(id: string) {
     setPhotos((current) => {
       const item = current.find((p) => p.id === id);
-      if (item?.sourceUrl) URL.revokeObjectURL(item.sourceUrl);
-      if (item?.preview?.startsWith("blob:")) URL.revokeObjectURL(item.preview);
       return current.filter((p) => p.id !== id);
     });
     if (id === selectedId) setSelectedId(null);
@@ -445,22 +441,14 @@ export default function Home() {
     }
   }
   async function zipAll() {
-    const ready = photos.filter(
-      (p) => p.preview && (p.kind === "image" || p.outputBlob),
-    );
+    const ready = photos.filter((p) => p.preview);
     if (!ready.length) return;
     setIsZipping(true);
     try {
       const zip = new JSZip();
       ready.forEach((p, i) => {
         const stem = `instagram-no-crop-${String(i + 1).padStart(2, "0")}`;
-        if (p.kind === "video" && p.outputBlob)
-          zip.file(
-            `${stem}.${p.outputBlob.type.includes("mp4") ? "mp4" : "webm"}`,
-            p.outputBlob,
-          );
-        else
-          zip.file(`${stem}.jpg`, p.preview!.split(",")[1], { base64: true });
+        zip.file(`${stem}.jpg`, p.preview!.split(",")[1], { base64: true });
       });
       const blob = await zip.generateAsync({ type: "blob" });
       download(URL.createObjectURL(blob), "instagram-no-crop-carousel.zip");
@@ -513,8 +501,8 @@ export default function Home() {
               <em className="font-normal">Nothing gets cropped.</em>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-stone-600 sm:text-lg">
-              Make an Instagram carousel with mixed photos and videos, all
-              perfectly sized. Your files stay on your device.
+              Make an Instagram carousel with different photo shapes, all
+              perfectly sized. Your photos stay on your device.
             </p>
           </div>
           <div className="tool-shell mt-10 overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-[0_24px_80px_rgba(50,42,31,.10)]">
@@ -525,7 +513,7 @@ export default function Home() {
                     Create your carousel
                   </h2>
                   <p className="mt-0.5 text-sm text-stone-500">
-                    Mix up to 20 photos and videos · Images, MP4, WebM or MOV
+                    Up to 20 photos · JPG, PNG or WebP
                   </p>
                   <p className="mt-0.5 text-sm text-stone-500">
                     Up to 20 photos · JPG, PNG or WebP
@@ -551,7 +539,7 @@ export default function Home() {
                   >
                     <div className="upload-icon">↑</div>
                     <h3 className="mt-4 font-display text-xl font-semibold">
-                      Drop photos or videos here
+                      Drop photos here
                     </h3>
                     <p className="mt-2 max-w-xs text-sm leading-6 text-stone-500">
                       or tap to choose from your device
@@ -570,7 +558,7 @@ export default function Home() {
                         onClick={() => input.current?.click()}
                         className="text-sm font-semibold text-coral hover:underline"
                       >
-                        Add files
+                        Add photos
                       </button>
                     </div>
                     <div className="preview-layout">
@@ -580,15 +568,7 @@ export default function Home() {
                           aspectRatio: `${ratios[ratio].width}/${ratios[ratio].height}`,
                         }}
                       >
-                        {selectedPhoto?.kind === "video" &&
-                        selectedPhoto.preview ? (
-                          <video
-                            src={selectedPhoto.preview}
-                            controls
-                            playsInline
-                            className="h-full w-full object-contain"
-                          />
-                        ) : selectedPhoto?.preview ? (
+                        {selectedPhoto?.preview ? (
                           <img
                             src={selectedPhoto.preview}
                             alt={`Processed preview ${photos.findIndex((photo) => photo.id === selectedPhoto.id) + 1}`}
@@ -633,14 +613,7 @@ export default function Home() {
                             key={photo.id}
                             aria-label={`Preview photo ${index + 1}`}
                           >
-                            {photo.kind === "video" &&
-                            (photo.preview || photo.sourceUrl) ? (
-                              <video
-                                src={photo.preview ?? photo.sourceUrl}
-                                muted
-                                playsInline
-                              />
-                            ) : photo.preview ? (
+                            {photo.preview ? (
                               <img
                                 src={photo.preview}
                                 alt={`Photo ${index + 1}`}
@@ -651,9 +624,6 @@ export default function Home() {
                             <span className="thumbnail-number">
                               {index + 1}
                             </span>
-                            {photo.kind === "video" && (
-                              <span className="thumbnail-kind">Video</span>
-                            )}
                             <span
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -676,7 +646,7 @@ export default function Home() {
                   ref={input}
                   onChange={onInput}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.jpg,.jpeg,.png,.webp,.mp4,.webm,.mov"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                   multiple
                   className="hidden"
                 />
