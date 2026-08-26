@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | InsCrop",
   },
   description:
-    "Fit whole photos and videos into an Instagram carousel without cropping. Create private, local 4:5, 3:4, square, or custom-size exports.",
+    "Fit whole photos into an Instagram carousel without cropping. Create private, local 4:5, 3:4, square, wide, or custom-size exports.",
   keywords: [
     "instagram carousel no crop",
     "instagram carousel different aspect ratios",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Instagram No-Crop Carousel Maker | InsCrop",
     description:
-      "Fit whole photos and videos into Instagram-ready carousel frames. Private, fast, and free.",
+      "Fit whole photos into Instagram-ready carousel frames. Private, fast, and free.",
     url: "/",
     type: "website",
     siteName: "InsCrop",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Instagram No-Crop Carousel Maker",
-    description: "Fit whole photos and videos without cropping.",
+    description: "Fit whole photos without cropping.",
     images: ["/opengraph-image"],
   },
   category: "Photo and video editing",

@@ -465,10 +465,10 @@ export default function Home() {
     operatingSystem: "Web",
     url: "https://ins-crop.vercel.app",
     description:
-      "A free, browser-based Instagram no-crop carousel maker for photos and videos.",
+      "A free, browser-based Instagram no-crop carousel maker for photos.",
     isAccessibleForFree: true,
     featureList:
-      "No-crop image fitting, local Canvas processing, photo and video support, custom canvas sizes, ZIP download",
+      "No-crop image fitting, local Canvas processing, custom canvas sizes, ZIP download",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   };
 
@@ -858,8 +858,8 @@ export default function Home() {
               {[
                 [
                   "01",
-                  "Add photos and videos",
-                  "Upload up to 20 JPG, PNG, WebP, MP4, WebM or MOV files from any device.",
+                  "Add your photos",
+                  "Upload up to 20 JPG, PNG or WebP images from any device.",
                 ],
                 [
                   "02",
@@ -895,11 +895,11 @@ export default function Home() {
               {[
                 [
                   "No missing edges",
-                  "Every original photo or video is scaled to fit. We never crop the important parts.",
+                  "Every original photo is scaled to fit. We never crop the important parts.",
                 ],
                 [
                   "Consistent posts",
-                  "Mix portrait, landscape, square photos and video while keeping one polished Instagram carousel format.",
+                  "Mix portrait, landscape and square photos while keeping one polished Instagram carousel format.",
                 ],
                 [
                   "Private by default",
@@ -926,7 +926,7 @@ export default function Home() {
               {[
                 [
                   "Will my images be cropped?",
-                  "Never. Your original photo or prepared video is fitted fully inside the selected Instagram canvas.",
+                  "Never. Your original photo is fitted fully inside the selected Instagram canvas.",
                 ],
                 [
                   "Are my photos uploaded anywhere?",
@@ -938,11 +938,7 @@ export default function Home() {
                 ],
                 [
                   "Can I download all photos at once?",
-                  "Yes. Use Download all as ZIP to get all prepared photos and videos in one folder.",
-                ],
-                [
-                  "Which video formats work?",
-                  "MP4, WebM and MOV can be added. Video export happens locally and supports clips up to 10 minutes. Chrome and Edge may export WebM when MP4 encoding is unavailable; convert it to MP4 before posting if Instagram requires it.",
+                  "Yes. Use Download all as ZIP to get all prepared photos in one folder.",
                 ],
               ].map(([q, a]) => (
                 <details key={q} className="group py-5">
